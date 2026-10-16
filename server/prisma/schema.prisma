@@ -1,0 +1,188 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  AWAITING_SHIPPING_QUOTE // transportadora: Elizio ainda vai informar o frete
+  PENDING_PAYMENT
+  PAID
+  IN_PRODUCTION
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+}
+
+enum ShippingMethod {
+  LOCAL_ZONE // Fiorino, preço fixo por região
+  CARRIER    // transportadora, frete cotado manualmente
+  PICKUP     // retirada na loja
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  phone        String?
+  role         Role      @default(CUSTOMER)
+  addresses    Address[]
+  orders       Order[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Address {
+  id         String  @id @default(cuid())
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  zipCode    String
+  street     String
+  number     String
+  complement String?
+  district   String
+  city       String
+  state      String  @db.Char(2)
+  orders     Order[]
+
+  @@index([userId])
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  products Product[]
+}
+
+model Product {
+  id           String           @id @default(cuid())
+  name         String
+  slug         String           @unique
+  description  String
+  categoryId   String
+  category     Category         @relation(fields: [categoryId], references: [id])
+  madeToOrder  Boolean          @default(true)
+  leadTimeDays Int?             // prazo de produção
+  widthCm      Int?
+  depthCm      Int?
+  heightCm     Int?
+  weightKg     Decimal?         @db.Decimal(8, 2)
+  images       String[]
+  active       Boolean          @default(true)
+  variants     ProductVariant[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([categoryId])
+}
+
+model ProductVariant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label      String      // ex: "Envelhecido, 1,80m"
+  price      Decimal     @db.Decimal(10, 2)
+  stock      Int?        // null = sob encomenda, sem controle de estoque
+  sku        String?     @unique
+  orderItems OrderItem[]
+
+  @@index([productId])
+}
+
+model ShippingZone {
+  id       String  @id @default(cuid())
+  name     String  
+  cepStart String
+  cepEnd   String
+  price    Decimal @db.Decimal(10, 2)
+  minDays  Int
+  maxDays  Int
+  active   Boolean @default(true)
+  orders   Order[]
+}
+
+model Order {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+  status         OrderStatus    @default(PENDING_PAYMENT)
+
+  // Endereço: referência + snapshot (não muda se o usuário editar depois)
+  addressId      String?
+  address        Address?       @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  shipZipCode    String
+  shipStreet     String
+  shipNumber     String
+  shipComplement String?
+  shipDistrict   String
+  shipCity       String
+  shipState      String         @db.Char(2)
+
+  // Frete
+  shippingMethod ShippingMethod
+  shippingZoneId String?
+  shippingZone   ShippingZone?  @relation(fields: [shippingZoneId], references: [id])
+  shippingCost   Decimal?       @db.Decimal(10, 2) // null = aguardando cotação (CARRIER)
+  shippingNote   String?        // ex: nome da transportadora e prazo informado
+
+  subtotal       Decimal        @db.Decimal(10, 2)
+  total          Decimal        @db.Decimal(10, 2) // começa = subtotal; recalculado após cotação
+  items          OrderItem[]
+  payments       Payment[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id           String         @id @default(cuid())
+  orderId      String
+  order        Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId    String
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+  productName  String         // snapshot
+  variantLabel String         // snapshot
+  unitPrice    Decimal        @db.Decimal(10, 2)
+  quantity     Int
+
+  @@index([orderId])
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  orderId    String
+  order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider   String        @default("mercadopago")
+  externalId String?       @unique
+  status     PaymentStatus @default(PENDING)
+  amount     Decimal       @db.Decimal(10, 2)
+  method     String?       // pix, cartão...
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([orderId])
+}
