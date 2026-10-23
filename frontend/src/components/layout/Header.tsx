@@ -98,7 +98,9 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => setMenuOpen(false), [pathname]);
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   // Na home o header fica transparente sobre o hero e ganha fundo ao rolar.
   const overlay = isHome && !scrolled;

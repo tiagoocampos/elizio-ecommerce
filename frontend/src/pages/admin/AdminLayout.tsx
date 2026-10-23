@@ -47,8 +47,11 @@ export default function AdminLayout() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
 
-  useEffect(() => setOpen(false), [pathname]);
-  useEffect(() => window.scrollTo({ top: 0 }), [pathname]);
+  useEffect(() => {
+    setOpen(false);
+    // não devolver o retorno de scrollTo: em navegadores novos ele é uma Promise e o React exige função ou nada
+    window.scrollTo({ top: 0 });
+  }, [pathname]);
 
   const footer = (
     <div className="space-y-1 border-t border-border pt-3">

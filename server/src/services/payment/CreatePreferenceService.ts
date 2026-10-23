@@ -12,8 +12,8 @@ interface CreatePreferenceServiceProps {
 
 class CreatePreferenceService {
     async execute({ orderId, userId }: CreatePreferenceServiceProps) {
-        const frontendUrl = process.env.FRONTEND_URL;
-        const backendUrl = process.env.BACKEND_URL;
+        const frontendUrl = process.env.FRONTEND_URL?.trim().replace(/\/+$/, "");
+        const backendUrl = process.env.BACKEND_URL?.trim().replace(/\/+$/, "");
 
         if (!frontendUrl || !backendUrl) {
             console.error("FRONTEND_URL e BACKEND_URL precisam estar definidos para criar a preferência de pagamento.");

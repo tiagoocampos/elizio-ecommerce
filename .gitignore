@@ -1,2 +1,6 @@
 .env
 node_modules
+criar-issue.sh
+*.zip
+/logo.jpg
+/referencia-visual.pdf

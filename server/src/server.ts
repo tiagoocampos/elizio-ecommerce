@@ -11,7 +11,12 @@ if (!process.env.JWT_SECRET) {
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors(process.env.FRONTEND_URL ? { origin: process.env.FRONTEND_URL } : undefined));
+// A origem do navegador nunca termina em "/": normaliza para o CORS bater mesmo com barra no final do .env.
+const frontendOrigin = process.env.FRONTEND_URL?.trim().replace(/\/+$/, "");
+if (!frontendOrigin) {
+    console.warn("FRONTEND_URL não definido: CORS aberto para qualquer origem.");
+}
+app.use(cors(frontendOrigin ? { origin: frontendOrigin } : undefined));
 
 app.use(router);
 

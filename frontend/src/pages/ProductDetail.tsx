@@ -247,7 +247,9 @@ export default function ProductDetail() {
   usePageTitle(query.data?.name ?? "Produto");
 
   // Ao trocar de produto (mesma rota), volta ao topo.
-  useEffect(() => window.scrollTo({ top: 0 }), [slug]);
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [slug]);
 
   if (query.isPending) return <ProductSkeleton />;
 
